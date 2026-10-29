@@ -1,0 +1,1088 @@
+Rest Assured BDD Framework Class 1
+
+
+====================================================================
+
+Pre-Req
+
+01. Start EmployeeManagement server
+
+
+====================================================================
+
+
+Dependencies Required
+
+<!-- Source: https://mvnrepository.com/artifact/io.rest-assured/rest-assured -->
+<dependency>
+    <groupId>io.rest-assured</groupId>
+    <artifactId>rest-assured</artifactId>
+    <version>6.1.0</version>
+    <scope>test</scope>
+</dependency>
+
+
+<!-- Source: https://mvnrepository.com/artifact/io.rest-assured/json-path -->
+<dependency>
+    <groupId>io.rest-assured</groupId>
+    <artifactId>json-path</artifactId>
+    <version>6.1.0</version>
+    <scope>test</scope>
+</dependency>
+
+
+<!-- Source: https://mvnrepository.com/artifact/io.rest-assured/json-schema-validator -->
+<dependency>
+    <groupId>io.rest-assured</groupId>
+    <artifactId>json-schema-validator</artifactId>
+    <version>6.1.0</version>
+    <scope>compile</scope>
+</dependency>
+
+
+<!-- Source: https://mvnrepository.com/artifact/io.cucumber/cucumber-java -->
+<dependency>
+    <groupId>io.cucumber</groupId>
+    <artifactId>cucumber-java</artifactId>
+    <version>8.0.4</version>
+    <scope>compile</scope>
+</dependency>
+
+
+<!-- Source: https://mvnrepository.com/artifact/io.cucumber/cucumber-core -->
+<dependency>
+    <groupId>io.cucumber</groupId>
+    <artifactId>cucumber-core</artifactId>
+    <version>8.0.4</version>
+    <scope>compile</scope>
+</dependency>
+
+
+<!-- Source: https://mvnrepository.com/artifact/io.cucumber/cucumber-testng -->
+<dependency>
+    <groupId>io.cucumber</groupId>
+    <artifactId>cucumber-testng</artifactId>
+    <version>8.0.4</version>
+    <scope>compile</scope>
+</dependency>
+
+
+<!-- Source: https://mvnrepository.com/artifact/org.testng/testng -->
+<dependency>
+    <groupId>org.testng</groupId>
+    <artifactId>testng</artifactId>
+    <version>7.12.0</version>
+    <scope>test</scope>
+</dependency>
+
+==========================================================
+
+
+01. Inside src/test/resoruces create a Package called Features and 
+    Inside Features Package Create EmployeeApi.feature
+
+Feature: Employee APIs
+
+	Scenario: Retrieve Employee as Per Id
+		Given user get request specification object
+		When user retrieve employee as per id
+		Then user validate status code 200
+		And user validate status line "200"
+		And user validate response time below  5000 milliseconds
+		And user validates response first name should not be null
+		And user validates response email should be string type
+	
+	
+
+Now we will generate Snippet for this one
+
+Right click --> Run As --> Cucumber Feature
+
+
+==========================================================
+	
+	
+02. Inside src/test/java create a package called steps and inside steps
+    create a class EmployeeSteps
+    
+    Paste the generated snippet from cucumber feature and Add the code
+
+package steps;
+
+import org.hamcrest.Matchers;
+import org.testng.Assert;
+
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+
+public class EmployeeSteps {
+	
+	RequestSpecification requestSpec;
+	Response response;
+	
+	@Given("user get request specification object")
+	public void user_get_request_specification_object() {
+	    
+		requestSpec = RestAssured.given();
+	}
+
+	@When("user retrieve employee as per id")
+	public void user_retrieve_employee_as_per_id() {
+		response = requestSpec.get("http://localhost:9191/api/employee/52");
+	}
+
+	@Then("user validate status code {int}")
+	public void user_validate_status_code(Integer expectedStatusCode) {
+	   
+	   //response.then().assertThat().statusCode(Matchers.equalTo(expectedStatusCode));
+		
+		int statusCode = response.statusCode();
+		Assert.assertEquals(statusCode, expectedStatusCode);
+	}
+
+	@Then("user validate status line {string}")
+	public void user_validate_status_line(String expectedStatusLine) {
+	    
+		//response.then().assertThat().statusLine(Matchers.containsString(expectedStatusLine));
+		
+		String statusLine = response.statusLine();
+		Assert.assertTrue(statusLine.contains(expectedStatusLine));
+	}
+
+	@Then("user validate response time below  {int} milliseconds")
+	public void user_validate_response_time_below_milliseconds(Integer expectedResponseTime) {
+	    
+		response.then().assertThat().time(Matchers.lessThan((long)expectedResponseTime));
+	
+		long actualTime = response.time();
+		Assert.assertTrue(actualTime < expectedResponseTime);
+		
+	}
+
+	@Then("user validates response first name should not be null")
+	public void user_validates_response_first_name_should_not_be_null() {
+	   
+		response.then().assertThat().body("firstName", Matchers.notNullValue());
+		
+		String firstName = response.jsonPath().getString("firstName");
+		Assert.assertNotNull(firstName);
+	
+	}
+
+	@Then("user validates response email should be string type")
+	public void user_validates_response_email_should_be_string_type() {
+	   
+		response.then().assertThat().body("email", Matchers.instanceOf(String.class));
+	
+		String email = response.jsonPath().getString("email");
+		Assert.assertTrue(email instanceof String);
+	}
+
+
+}
+
+==========================================================
+
+
+Also Modified the code for above
+
+package steps;
+
+
+import org.hamcrest.Matchers;
+import org.testng.Assert;
+
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+
+public class EmployeeSteps {
+	
+	RequestSpecification requestSpec;
+	Response response;
+	
+	@Given("user get request specification object")
+	public void user_get_request_specification_object() {
+	    
+		// RequestSpecBuilder used to add the common request informations
+		// like BaseURI, Content Type Header, Logs etc
+		
+		RequestSpecification spec = new RequestSpecBuilder()
+										.setBaseUri("http://localhost:9191/api/employee/52")
+										.setContentType(ContentType.JSON)
+										.setAccept(ContentType.JSON)
+										.log(LogDetail.ALL)
+										.build();
+		
+		requestSpec = RestAssured.given().spec(spec);
+	}
+
+	@When("user retrieve employee as per id")
+	public void user_retrieve_employee_as_per_id() {
+		response = requestSpec.get("http://localhost:9191/api/employee/52");
+	}
+
+	@Then("user validate status code {int}")
+	public void user_validate_status_code(Integer expectedStatusCode) {
+	   
+	   //response.then().assertThat().statusCode(Matchers.equalTo(expectedStatusCode));
+		
+		int statusCode = response.statusCode();
+		Assert.assertEquals(statusCode, expectedStatusCode);
+	}
+
+	@Then("user validate status line {string}")
+	public void user_validate_status_line(String expectedStatusLine) {
+	    
+		//response.then().assertThat().statusLine(Matchers.containsString(expectedStatusLine));
+		
+		String statusLine = response.statusLine();
+		Assert.assertTrue(statusLine.contains(expectedStatusLine));
+	}
+
+	@Then("user validate response time below  {int} milliseconds")
+	public void user_validate_response_time_below_milliseconds(Integer expectedResponseTime) {
+	    
+		response.then().assertThat().time(Matchers.lessThan((long)expectedResponseTime));
+	
+		long actualTime = response.time();
+		Assert.assertTrue(actualTime < expectedResponseTime);
+		
+	}
+
+	@Then("user validates response first name should not be null")
+	public void user_validates_response_first_name_should_not_be_null() {
+	   
+		response.then().assertThat().body("firstName", Matchers.notNullValue());
+		
+		String firstName = response.jsonPath().getString("firstName");
+		Assert.assertNotNull(firstName);
+	
+	}
+
+	@Then("user validates response email should be string type")
+	public void user_validates_response_email_should_be_string_type() {
+	   
+		response.then().assertThat().body("email", Matchers.instanceOf(String.class));
+	
+		String email = response.jsonPath().getString("email");
+		Assert.assertTrue(email instanceof String);
+	}
+
+
+}
+
+
+==========================================================
+
+
+We never store this codw within the steps file
+
+RequestSpecification spec = new RequestSpecBuilder()
+										.setBaseUri("http://localhost:9191/api/employee/52")
+										.setContentType(ContentType.JSON)
+										.setAccept(ContentType.JSON)
+										.log(LogDetail.ALL)
+										.build();
+
+Always have to create one more package inside src/main/java
+	Package name will be Base Package and class name is RequestSpecBuilderFactory
+	and paste the above code 
+	
+The file code will look something like below
+
+package base;
+
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
+
+public class RequestSpecBuilderFactory {
+	
+	// It will throw exception because we are using this code inside src/main/java packages
+	// Open pom.xml file and change the dependency scope to the test to compile for rest-assured
+	public static RequestSpecification getRequestSpecification()
+	{
+		 RequestSpecification spec = new RequestSpecBuilder()
+				.setBaseUri("http://localhost:9191")
+				.setContentType(ContentType.JSON)
+				.setAccept(ContentType.JSON)
+				.log(LogDetail.ALL)
+				.build();
+		 
+		 
+		 return spec;
+
+	}
+}
+
+---------------
+
+and now EmployeeSteps.java class looks like below
+
+package steps;
+
+
+import org.hamcrest.Matchers;
+import org.testng.Assert;
+
+import base.RequestSpecBuilderFactory;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+
+public class EmployeeSteps {
+	
+	RequestSpecification requestSpec;
+	Response response;
+	
+	
+	@Given("user get request specification object")
+	public void user_get_request_specification_object() {
+	    
+		requestSpec = RestAssured.given().spec(RequestSpecBuilderFactory.getRequestSpecification());
+	}
+
+	@When("user retrieve employee as per id")
+	public void user_retrieve_employee_as_per_id() {
+		response = requestSpec.get("http://localhost:9191/api/employee/52");
+	}
+
+	@Then("user validate status code {int}")
+	public void user_validate_status_code(Integer expectedStatusCode) {
+	   
+	   //response.then().assertThat().statusCode(Matchers.equalTo(expectedStatusCode));
+		
+		int statusCode = response.statusCode();
+		Assert.assertEquals(statusCode, expectedStatusCode);
+	}
+
+	@Then("user validate status line {string}")
+	public void user_validate_status_line(String expectedStatusLine) {
+	    
+		//response.then().assertThat().statusLine(Matchers.containsString(expectedStatusLine));
+		
+		String statusLine = response.statusLine();
+		Assert.assertTrue(statusLine.contains(expectedStatusLine));
+	}
+
+	@Then("user validate response time below  {int} milliseconds")
+	public void user_validate_response_time_below_milliseconds(Integer expectedResponseTime) {
+	    
+		response.then().assertThat().time(Matchers.lessThan((long)expectedResponseTime));
+	
+		long actualTime = response.time();
+		Assert.assertTrue(actualTime < expectedResponseTime);
+		
+	}
+
+	@Then("user validates response first name should not be null")
+	public void user_validates_response_first_name_should_not_be_null() {
+	   
+		response.then().assertThat().body("firstName", Matchers.notNullValue());
+		
+		String firstName = response.jsonPath().getString("firstName");
+		Assert.assertNotNull(firstName);
+	
+	}
+
+	@Then("user validates response email should be string type")
+	public void user_validates_response_email_should_be_string_type() {
+	   
+		response.then().assertThat().body("email", Matchers.instanceOf(String.class));
+	
+		String email = response.jsonPath().getString("email");
+		Assert.assertTrue(email instanceof String);
+	}
+
+
+}
+
+
+
+==========================================================
+
+Instead of using the get request(response = requestSpec.get("http://localhost:9191/api/employee/52");) 
+
+directly Always  we create one more package 
+	in src/main/java as client package
+	in the client package we create BaseClient Class
+
+
+and Within this BaseClient Class we use actual RestAssured Request (GET/POST/PUT/Delete etc)
+
+
+BaseClient.java
+
+package client;
+
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+
+public class BaseClient {
+	
+	public Response get(RequestSpecification spec, String endpoint)
+	{
+		return RestAssured
+			.given()
+				.spec(spec)
+			.when()
+				.get(endpoint);
+	}
+}
+
+---------------
+
+
+At the time calling above method it is asking for 2 arguments/paramteres
+(RequestSpecification spec, String endpoint)
+
+
+We call this always clientMethods in service layer
+	src/main/java --> package --> services
+	Inside services package we create EmployeeService class
+
+package services;
+
+import client.BaseClient;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+
+public class EmployeeService extends BaseClient{
+	
+	
+	public Response getEmployeeAsPerId(RequestSpecification spec, String id)
+	{
+		return super.get(spec, "/api/employee/"+id);
+	}
+}
+
+
+---------------
+
+And EmployeeSteps.java looks like
+
+package steps;
+
+
+import org.hamcrest.Matchers;
+import org.testng.Assert;
+
+import base.RequestSpecBuilderFactory;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import services.EmployeeService;
+
+public class EmployeeSteps {
+	
+	RequestSpecification spec;
+	Response response;
+	
+	
+	@Given("user get request specification object")
+	public void user_get_request_specification_object() {
+	    
+		
+		// Here we call Base Class Method
+		spec = RequestSpecBuilderFactory.getRequestSpecification();
+	}
+
+	@When("user retrieve employee as per id")
+	public void user_retrieve_employee_as_per_id() {
+		
+		EmployeeService employeeService = new EmployeeService();
+		response = employeeService.getEmployeeAsPerId(spec, "52");
+	}
+
+	@Then("user validate status code {int}")
+	public void user_validate_status_code(Integer expectedStatusCode) {
+	   
+	   //response.then().assertThat().statusCode(Matchers.equalTo(expectedStatusCode));
+		
+		int statusCode = response.statusCode();
+		Assert.assertEquals(statusCode, expectedStatusCode);
+	}
+
+	@Then("user validate status line {string}")
+	public void user_validate_status_line(String expectedStatusLine) {
+	    
+		//response.then().assertThat().statusLine(Matchers.containsString(expectedStatusLine));
+		
+		String statusLine = response.statusLine();
+		Assert.assertTrue(statusLine.contains(expectedStatusLine));
+	}
+
+	@Then("user validate response time below  {int} milliseconds")
+	public void user_validate_response_time_below_milliseconds(Integer expectedResponseTime) {
+	    
+		response.then().assertThat().time(Matchers.lessThan((long)expectedResponseTime));
+	
+		long actualTime = response.time();
+		Assert.assertTrue(actualTime < expectedResponseTime);
+		
+	}
+
+	@Then("user validates response first name should not be null")
+	public void user_validates_response_first_name_should_not_be_null() {
+	   
+		response.then().assertThat().body("firstName", Matchers.notNullValue());
+		
+		String firstName = response.jsonPath().getString("firstName");
+		Assert.assertNotNull(firstName);
+	
+	}
+
+	@Then("user validates response email should be string type")
+	public void user_validates_response_email_should_be_string_type() {
+	   
+		response.then().assertThat().body("email", Matchers.instanceOf(String.class));
+	
+		String email = response.jsonPath().getString("email");
+		Assert.assertTrue(email instanceof String);
+	}
+
+
+}
+
+
+
+==========================================================
+
+
+lets modify one more thing 
+
+Here in this code
+@When("user retrieve employee as per id")
+	public void user_retrieve_employee_as_per_id() {
+		
+		EmployeeService employeeService = new EmployeeService();
+		response = employeeService.getEmployeeAsPerId(spec, "52");
+	}
+	
+
+Here we create the object of EmployeeService Class 
+	When ur working on BDD Framework Instead of creating the object by using new keyword,
+	always we can use the contructor dependency injection concept
+
+
+EmployeeSteps.java looks like below
+
+package steps;
+
+
+import org.hamcrest.Matchers;
+import org.testng.Assert;
+
+import base.RequestSpecBuilderFactory;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import services.EmployeeService;
+
+public class EmployeeSteps {
+	
+	RequestSpecification spec;
+	Response response;
+	EmployeeService employeeService;
+	
+	
+	public EmployeeSteps(EmployeeService employeeService)
+	{
+		this.employeeService =  employeeService;
+	}
+	
+	@Given("user get request specification object")
+	public void user_get_request_specification_object() {
+	    
+		
+		// Here we call Base Class Method
+		spec = RequestSpecBuilderFactory.getRequestSpecification();
+	}
+
+	@When("user retrieve employee as per id")
+	public void user_retrieve_employee_as_per_id() {
+		
+		response = employeeService.getEmployeeAsPerId(spec, "52");
+	}
+
+	@Then("user validate status code {int}")
+	public void user_validate_status_code(Integer expectedStatusCode) {
+	   
+	   //response.then().assertThat().statusCode(Matchers.equalTo(expectedStatusCode));
+		
+		int statusCode = response.statusCode();
+		Assert.assertEquals(statusCode, expectedStatusCode);
+	}
+
+	@Then("user validate status line {string}")
+	public void user_validate_status_line(String expectedStatusLine) {
+	    
+		//response.then().assertThat().statusLine(Matchers.containsString(expectedStatusLine));
+		
+		String statusLine = response.statusLine();
+		Assert.assertTrue(statusLine.contains(expectedStatusLine));
+	}
+
+	@Then("user validate response time below  {int} milliseconds")
+	public void user_validate_response_time_below_milliseconds(Integer expectedResponseTime) {
+	    
+		response.then().assertThat().time(Matchers.lessThan((long)expectedResponseTime));
+	
+		long actualTime = response.time();
+		Assert.assertTrue(actualTime < expectedResponseTime);
+		
+	}
+
+	@Then("user validates response first name should not be null")
+	public void user_validates_response_first_name_should_not_be_null() {
+	   
+		response.then().assertThat().body("firstName", Matchers.notNullValue());
+		
+		String firstName = response.jsonPath().getString("firstName");
+		Assert.assertNotNull(firstName);
+	
+	}
+
+	@Then("user validates response email should be string type")
+	public void user_validates_response_email_should_be_string_type() {
+	   
+		response.then().assertThat().body("email", Matchers.instanceOf(String.class));
+	
+		String email = response.jsonPath().getString("email");
+		Assert.assertTrue(email instanceof String);
+	}
+
+
+}
+
+
+NOTE IMPORTANT:
+If i try to run this It will fail because we need "Cucumber PicoContainer" dependency to achive the constructor dependency
+injection
+
+<!-- Source: https://mvnrepository.com/artifact/io.cucumber/cucumber-picocontainer -->
+<dependency>
+    <groupId>io.cucumber</groupId>
+    <artifactId>cucumber-picocontainer</artifactId>
+    <version>7.34.4</version>
+    <scope>compile</scope>
+</dependency>
+
+
+
+
+==========================================================
+
+Lets modify another thing
+
+Within the service layer classes we call methods from BaseClient Class
+
+So we modify EmployeeServices.java like below
+
+
+package services;
+
+import client.BaseClient;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+
+public class EmployeeService {
+	
+	
+	private BaseClient baseClient;
+	
+	
+	public EmployeeService()
+	{
+		baseClient = new BaseClient();
+	}
+	
+	public Response getEmployeeAsPerId(RequestSpecification spec, String id)
+	{
+		return baseClient.get(spec, "/api/employee/"+id);
+	}
+}
+
+
+==========================================================
+
+Lets modify another thing
+
+
+package client;
+
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+
+public class BaseClient {
+	
+	public Response get(RequestSpecification spec, String endpoint)
+	{
+		return RestAssured
+			.given()
+				.spec(spec)
+			.when()
+				.get(endpoint);
+	}
+}
+
+we dont want to take the spec argument(RequestSpecification spec) 
+	from BaseClient code i have provided above
+
+
+We are also taking spec argument within the EmployeeService.java classes
+
+
+The BaseClient.java looks like below
+
+package client;
+
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+
+public class BaseClient {
+	
+	
+	private RequestSpecification spec;
+	
+	
+	public BaseClient(RequestSpecification spec)
+	{
+		this.spec = spec;
+	}
+	
+	
+	public Response get(String endpoint)
+	{
+		return RestAssured
+			.given()
+				.spec(spec)
+			.when()
+				.get(endpoint);
+	}
+}
+
+
+--------------
+
+The EmployeeService.java looks like below
+
+
+package services;
+
+import client.BaseClient;
+import io.restassured.response.Response;
+
+
+public class EmployeeService {
+	
+	
+	private BaseClient baseClient;
+	
+	
+	public EmployeeService(BaseClient baseClient)
+	{
+		this.baseClient = baseClient;
+	}
+	
+	public Response getEmployeeAsPerId(String id)
+	{
+		return baseClient.get("/api/employee/"+id);
+	}
+}
+
+
+"Why we are taking this approach, Instead of taking again and again spec arguments, within
+base client class we take one constructor and if we want to call any methods from base client class
+first we have to pass spec reference "
+
+
+------------
+
+Now EmployeeSteps.java looks like
+
+package steps;
+
+
+import org.hamcrest.Matchers;
+import org.testng.Assert;
+
+import base.RequestSpecBuilderFactory;
+import client.BaseClient;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import services.EmployeeService;
+
+public class EmployeeSteps {
+	
+	RequestSpecification spec;
+	Response response;
+	EmployeeService employeeService;
+
+	
+	@Given("user get request specification object")
+	public void user_get_request_specification_object() {
+	    
+		
+		// Here we call Base Class Method
+		spec = RequestSpecBuilderFactory.getRequestSpecification();
+		
+		
+		BaseClient baseClient = new BaseClient(spec);
+		employeeService = new EmployeeService(baseClient);
+	}
+
+	@When("user retrieve employee as per id")
+	public void user_retrieve_employee_as_per_id() {
+		
+		response = employeeService.getEmployeeAsPerId("52");
+	}
+
+	@Then("user validate status code {int}")
+	public void user_validate_status_code(Integer expectedStatusCode) {
+	   
+	   //response.then().assertThat().statusCode(Matchers.equalTo(expectedStatusCode));
+		
+		int statusCode = response.statusCode();
+		Assert.assertEquals(statusCode, expectedStatusCode);
+	}
+
+	@Then("user validate status line {string}")
+	public void user_validate_status_line(String expectedStatusLine) {
+	    
+		//response.then().assertThat().statusLine(Matchers.containsString(expectedStatusLine));
+		
+		String statusLine = response.statusLine();
+		Assert.assertTrue(statusLine.contains(expectedStatusLine));
+	}
+
+	@Then("user validate response time below  {int} milliseconds")
+	public void user_validate_response_time_below_milliseconds(Integer expectedResponseTime) {
+	    
+		response.then().assertThat().time(Matchers.lessThan((long)expectedResponseTime));
+	
+		long actualTime = response.time();
+		Assert.assertTrue(actualTime < expectedResponseTime);
+		
+	}
+
+	@Then("user validates response first name should not be null")
+	public void user_validates_response_first_name_should_not_be_null() {
+	   
+		response.then().assertThat().body("firstName", Matchers.notNullValue());
+		
+		String firstName = response.jsonPath().getString("firstName");
+		Assert.assertNotNull(firstName);
+	
+	}
+
+	@Then("user validates response email should be string type")
+	public void user_validates_response_email_should_be_string_type() {
+	   
+		response.then().assertThat().body("email", Matchers.instanceOf(String.class));
+	
+		String email = response.jsonPath().getString("email");
+		Assert.assertTrue(email instanceof String);
+	}
+
+
+}
+
+
+==========================================================
+
+
+Lets modify another thing
+
+Inside EmployeeService.java
+
+package services;
+
+import client.BaseClient;
+import io.restassured.response.Response;
+
+
+public class EmployeeService {
+	
+	
+	private BaseClient baseClient;
+	
+	
+	public EmployeeService(BaseClient baseClient)
+	{
+		this.baseClient = baseClient;
+	}
+	
+	public Response getEmployeeAsPerId(String id)
+	{
+		return baseClient.get("/api/employee/"+id);
+	}
+}
+
+
+We take /api/employee/ endpoint instead of taking this actual endpoint within the
+	service layer package 
+	
+	We create endpoints package inside src/main/java
+	
+	inside endpoints package we create EmployeeEndpoint interface
+
+
+EmployeeEndpoint.java
+
+package endpoints;
+
+public interface EmployeeEndpoint {
+	
+	public final static String GET_EMPLOYEE_AS_PER_ID = "/api/employee/";
+}
+
+
+
+EmployeeService.java
+
+package services;
+
+import client.BaseClient;
+import endpoints.EmployeeEndpoint;
+import io.restassured.response.Response;
+
+
+public class EmployeeService {
+	
+	
+	private BaseClient baseClient;
+	
+	
+	public EmployeeService(BaseClient baseClient)
+	{
+		this.baseClient = baseClient;
+	}
+	
+	public Response getEmployeeAsPerId(String id)
+	{
+		return baseClient.get(EmployeeEndpoint.GET_EMPLOYEE_AS_PER_ID +id);
+	}
+}
+
+
+==========================================================
+
+
+Lets modify as per Path Parameter
+
+EmployeeEndpoint.java
+
+package endpoints;
+
+public interface EmployeeEndpoint {
+	
+	public final static String GET_EMPLOYEE_AS_PER_ID = "/api/employee/{id}";
+}
+
+
+
+BaseClient.java
+
+package client;
+
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+
+public class BaseClient {
+	
+	
+	private RequestSpecification spec;
+	
+	
+	public BaseClient(RequestSpecification spec)
+	{
+		this.spec = spec;
+	}
+	
+	
+	public Response get(String endpoint, String id)
+	{
+		return RestAssured
+			.given()
+				.spec(spec)
+				.pathParam("id", id)
+			.when()
+				.get(endpoint);
+	}
+}
+
+
+
+EmployeeService.java
+
+package services;
+
+import client.BaseClient;
+import endpoints.EmployeeEndpoint;
+import io.restassured.response.Response;
+
+
+public class EmployeeService {
+	
+	
+	private BaseClient baseClient;
+	
+	
+	public EmployeeService(BaseClient baseClient)
+	{
+		this.baseClient = baseClient;
+	}
+	
+	public Response getEmployeeAsPerId(String id)
+	{
+		return baseClient.get(EmployeeEndpoint.GET_EMPLOYEE_AS_PER_ID , id);
+	}
+}
+
+==========================================================
+
+What all to remember from Todays class
+
+	- BaseClient methods we call within Steps classes
+	- We call the BaseClient Methods within the Service layer classes
+	- We call Endpoints within the Service layer classes
+	- We call Service Layer methods within the Steps classes
+
+
+
+
+
+
+
+
+
+
+
+
