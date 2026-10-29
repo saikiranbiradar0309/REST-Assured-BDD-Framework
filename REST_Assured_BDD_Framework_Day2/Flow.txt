@@ -1,0 +1,711 @@
+01. Start the EmployeeManagement Server
+
+================================================
+
+02. In this EmployeeManagement Server We can able to make 6 API Requests
+	
+		--> So lets create an interface for all of them
+		
+		--> Create a package inside src/main/java as endpoints
+				--> Inside endpoints create a EmployeeEndpoint.java class
+
+				
+package endpoints;
+
+public interface EmployeeEndpoint {
+	
+	public static final String CREATE_EMPLOYEE = "/api/employees";
+	
+	public static final String GET_ALL_EMPLOYEES = "/api/employees";
+	
+	public static final String GET_EMPLOYEE_AS_PER_ID = "/api/employee/{id}";
+	
+	public static final String GET_EMPLOYEE_AS_PER_CITY = "/api/employees/city/{city}";
+	
+	public static final String UPDATE_EMPLOYEE_AS_PER_ID = "/api/employees/{id}";
+	
+	public static final String DELETE_EMPLOYEE_AS_PER_ID = "/api/employees/{id}";
+}
+
+
+
+
+================================================
+
+
+03. Lets create a Base class (In some organizations it is also called as spec Class)
+	
+		--> Create a package inside src/main/java as spec
+				--> Inside spec package create a SpecFactory class
+
+
+package spec;
+
+
+
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
+
+public class SpecFactory {
+	
+	public static RequestSpecification requestSpec()
+	{
+		
+		// RequestSpecBuilder is a class which is used to build the request specification
+		RequestSpecBuilder spec = new RequestSpecBuilder();
+		
+		
+		//Generally we store BaseUri in a property file and read it from there. 
+		//But for now we will hardcode it.
+		spec.setBaseUri("http://localhost:9191");
+		
+		//We can set the content type of the request here.
+		spec.setContentType(ContentType.JSON);
+		
+		//We can set the accept type of the request here.
+		spec.setAccept(ContentType.JSON);
+		
+		//We can set the relaxed HTTPS validation here.
+		spec.setRelaxedHTTPSValidation();
+		
+		//We can log the request and response details here.
+		spec.log(LogDetail.ALL);
+		
+		
+		// I want to combine all the above details and create a request specification object which can be used in all the test cases.
+		// So we will use build() method to create a request specification object.
+		// We can use this request specification object in all the test cases.
+		RequestSpecification requestSpec = spec.build();
+		
+		
+		
+		return requestSpec;
+	}
+	
+	
+	public static ResponseSpecification responseSpec()
+	{
+		
+		// ResponseSpecBuilder is a class which is used to build the response specification
+		ResponseSpecBuilder spec = new ResponseSpecBuilder();
+		
+		//We can set the expected Response Time of the response here.
+		//spec.expectResponseTime(Matchers.lessThan(5000L));
+		
+		
+		//spec.expectHeader("Content-Type", Matchers.containsString("application/json"));
+		
+		// log the request and response details here.
+		spec.log(LogDetail.ALL);
+		
+		ResponseSpecification responseSpec =  spec.build();
+		
+		return responseSpec;
+	}
+	
+}
+
+
+
+================================================
+
+
+04. Now we create a client layer package inside src/main/java 
+		--> Inside client layer package create a BaseClient class
+	
+		--> Also explain why we are taking pathParam and queryParam here
+		--> WHats the usecase of  pathParam and queryParam in the client layer
+
+
+package client;
+
+import java.util.HashMap;
+
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import spec.SpecFactory;
+
+public class BaseClient {
+	
+	
+	public Response get(String endpoint)
+	{
+		
+		Response response =  RestAssured
+			.given()
+				.spec(SpecFactory.requestSpec())
+			.when()
+				.get(endpoint)
+			.then()
+				.assertThat()
+				.spec(SpecFactory.responseSpec())
+				.extract()
+				.response();
+		
+		
+		
+		return response;
+	}
+	
+	
+	public Response get(String endpoint, HashMap<String, String> pathParams)
+	{
+		
+		Response response = RestAssured
+			.given()
+				.spec(SpecFactory.requestSpec())
+				.pathParams(pathParams)
+			.when()
+				.get(endpoint)
+			.then()
+				.assertThat()
+				.spec(SpecFactory.responseSpec())
+				.extract()
+				.response();
+		
+		return response;
+	}
+	
+	
+	
+	
+	public Response get(String endpoint, HashMap<String, String> pathParams, HashMap<String, String> queryParams)
+	{
+		
+		Response response = null;
+		if(pathParams != null)
+		{
+		
+			 response = RestAssured
+					.given()
+						.spec(SpecFactory.requestSpec())
+						.pathParams(pathParams)
+					.when()
+						.get(endpoint)
+					.then()
+						.assertThat()
+						.spec(SpecFactory.responseSpec())
+						.extract()
+						.response();
+		}
+		
+		if(queryParams != null)
+		{
+			response = RestAssured
+					.given()
+						.spec(SpecFactory.requestSpec())
+						.queryParams(queryParams)
+					.when()
+						.get(endpoint)
+					.then()
+						.assertThat()
+						.spec(SpecFactory.responseSpec())
+						.extract()
+						.response();
+		}
+		
+		
+		if(pathParams != null && queryParams != null)
+		{
+			response = RestAssured
+					.given()
+						.spec(SpecFactory.requestSpec())
+						.pathParams(pathParams)
+						.queryParams(queryParams)
+					.when()
+						.get(endpoint)
+					.then()
+						.assertThat()
+						.spec(SpecFactory.responseSpec())
+						.extract()
+						.response();
+		}
+		
+		return response;
+	}
+	
+}
+
+
+================================================
+
+
+05. Now we create services layer package inside src/main/java 
+		--> Inside services layer package create a EmployeeServices class
+
+
+
+To check whether the request will Accept pathParam or queryParam, Goto the swagger UI,
+		Inside Parameters section, we can see the type of parameter is mentioned as path or query.
+		
+		
+
+package services;
+
+import java.util.HashMap;
+
+import client.BaseClient;
+import endpoints.EmployeeEndpoint;
+import io.restassured.response.Response;
+
+public class EmployeeServices extends BaseClient {
+	
+	
+	public Response getAllEmployees()
+	{
+		return this.get(EmployeeEndpoint.GET_ALL_EMPLOYEES);
+	}
+	
+	
+	public Response getAllEmployeeAsPerId(String id)
+	{
+		// So here we need to pass the ID as path parameter, 
+		//so we need to create a HashMap and pass the ID as key value pair in the HashMap and then pass that HashMap to the get method of BaseClient class.
+	
+		HashMap<String, String> pathParams = new HashMap<String, String>();
+		pathParams.put("id", id);
+		
+		
+		return this.get(EmployeeEndpoint.GET_EMPLOYEE_AS_PER_ID, pathParams);
+	
+	}
+	
+	
+	public Response getALlEmployeesAsPerCity(String city)
+	{
+		HashMap<String, String> pathParams = new HashMap<String, String>();
+		pathParams.put("city", city);
+		
+		return this.get(EmployeeEndpoint.GET_EMPLOYEES_AS_PER_CITY, pathParams);
+	}
+}	
+
+
+================================================
+
+06. Now we create One more package for Assertions which is validators inside src/main/java 
+		--> Inside validators package create a Assertions class
+
+
+package validators;
+
+import org.hamcrest.Matchers;
+import org.testng.Assert;
+
+import io.restassured.response.Response;
+
+public class Assertions {
+	
+	
+	public static void verifyStatusCode(Response response, int expectedStatusCode)
+	{
+		//response.then().assertThat().statusCode(Matchers.equalTo(expectedStatusCode));
+		
+		
+		Assert.assertEquals(response.getStatusCode(), expectedStatusCode);
+	}
+	
+	
+	public static void verifyResponseStatusLine(Response response, String expectedStatusLine)
+	{
+		Assert.assertTrue(response.statusLine().contains(expectedStatusLine));
+	}
+	
+	
+	public static void verifyResponseTimeShouldBelow(Response response, long expectedTime)
+	{
+		Assert.assertTrue(response.getTime() < expectedTime);
+		
+		response.then().assertThat().time(Matchers.lessThan(expectedTime));
+	}
+	
+	
+	public static void verifyNotNull(Response response, String jsonPath)
+	{
+		String actualValue = response.jsonPath().getString(jsonPath);
+		
+		Assert.assertNotNull(actualValue);
+		
+		
+		//response.then().assertThat().body(jsonPath, Matchers.notNullValue());
+	}
+	
+	
+	
+	public static void verifyInstanceOfValue(Response response, String jsonPath, Class<?> classType)
+	{
+		String actualValue = response.jsonPath().getString(jsonPath);
+		Assert.assertEquals(actualValue.getClass(), classType);
+		
+		response.then().assertThat().body(jsonPath, Matchers.instanceOf(classType));
+	}
+	
+}
+
+
+
+
+================================================
+
+07. Inside src/test/resources create a features file as EmployeeAPI.feature
+
+Feature: Employee API
+
+	Rule: Employee Should be Exist in the Backend Server
+	
+	Scenario: Retrieve Employees As per Id
+		When user send get request with employee id
+		Then user verify response status code should be 200
+		And user verify response status line should be "200 OK"
+		And user verify response time should be below 5000 milliseconds
+		And user verify response firstname value should not be not null
+		And user verify response username value should not be not null
+		And user verify response email value should be String type
+		And user verify response lastname value should be String type
+
+
+RightClick --> Run As --> Cucumber Feature
+
+
+---------------------------------
+
+Inside src/test/java create a package as steps 
+	--> Create EmployeeSteps class
+		
+
+And paste the snippet in EmployeeSteps and then modify 
+
+
+package steps;
+
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.response.Response;
+import services.EmployeeServices;
+import validators.Assertions;
+
+public class EmployeeSteps {
+
+	Response response;
+	EmployeeServices employeeService;
+	
+	public EmployeeSteps(EmployeeServices employeeService)
+	{
+		this.employeeService = employeeService;
+	}
+	
+	
+	@When("user send get request with employee id")
+	public void user_send_get_request_with_employee_id() {
+	    
+		response = employeeService.getAllEmployeeAsPerId("53");
+	}
+
+	
+	
+	@Then("user verify response status code should be {int}")
+	public void user_verify_response_status_code_should_be(Integer statusCode) {
+	    
+		Assertions.verifyStatusCode(response, statusCode);
+	}
+
+	
+	
+	@Then("user verify response status line should be {string}")
+	public void user_verify_response_status_line_should_be(String statusLine) {
+	    
+		Assertions.verifyResponseStatusLine(response, statusLine);
+	}
+
+	
+	
+	@Then("user verify response time should be below {int} milliseconds")
+	public void user_verify_response_time_should_be_below_milliseconds(Integer time) {
+		
+		Assertions.verifyResponseTimeShouldBelow(response, (long) time);
+	}
+
+	
+	@Then("user verify response firstname value should not be not null")
+	public void user_verify_response_firstname_value_should_not_be_not_null() {
+	    
+		Assertions.verifyNotNull(response, "firstName");
+	}
+	
+
+	@Then("user verify response username value should not be not null")
+	public void user_verify_response_username_value_should_not_be_not_null() {
+		Assertions.verifyNotNull(response, "username");
+	}
+
+	
+	@Then("user verify response email value should be String type")
+	public void user_verify_response_email_value_should_be_string_type() {
+	   Assertions.verifyInstanceOfValue(response, "email", String.class);
+	}
+
+	@Then("user verify response lastname value should be String type")
+	public void user_verify_response_lastname_value_should_be_string_type() {
+		Assertions.verifyInstanceOfValue(response, "lastName", String.class);
+	}
+
+
+	
+}
+
+
+Run the test Case
+
+
+================================================
+
+
+08. Now lets get employees as per city
+
+Modify the EmployeeAPI.feature file as below
+
+Feature: Employee API
+
+	Rule: Employee Should be Exist in the Backend Server
+	
+	Scenario: Retrieve Employees As per Id
+		When user send get request with employee id
+		Then user verify response status code should be 200
+		And user verify response status line should be "200"
+		And user verify response time should be below 5000 milliseconds
+		And user verify response firstname value should not be not null
+		And user verify response username value should not be not null
+		And user verify response email value should be String type
+		And user verify response lastname value should be String type
+		
+	
+	Scenario: Retrieve all Employees as per City
+		When user send get request with city name
+		Then user verify response status code should be 200
+		And user verify response status line should be "200"
+		And user verify response time should be below 5000 milliseconds
+		And user verify all employee city name
+		
+		
+---------------------------------
+
+Inside src/test/java create runner package
+	--> Inside this package create RunnerTest class		
+	
+
+package runner;
+
+import io.cucumber.testng.AbstractTestNGCucumberTests;
+import io.cucumber.testng.CucumberOptions;
+
+
+@CucumberOptions(
+		
+		features = "src/test/resources/features",
+		glue = "steps",
+		dryRun = true
+		
+		)
+
+
+public class RunnerTest extends AbstractTestNGCucumberTests {
+	
+	
+	
+}
+
+
+Run As --> TestNG Test	
+		
+		
+---------------------------------
+
+
+It will generate a snippet copy that and paste in EmployeeSteps class
+
+		
+	package steps;
+
+import java.util.List;
+
+import org.testng.Assert;
+
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.response.Response;
+import services.EmployeeServices;
+import validators.Assertions;
+
+public class EmployeeSteps {
+
+	Response response;
+	EmployeeServices employeeService;
+	
+	public EmployeeSteps(EmployeeServices employeeService)
+	{
+		this.employeeService = employeeService;
+	}
+	
+	
+	@When("user send get request with employee id")
+	public void user_send_get_request_with_employee_id() {
+	    
+		response = employeeService.getAllEmployeeAsPerId("53");
+	}
+
+	
+	
+	@Then("user verify response status code should be {int}")
+	public void user_verify_response_status_code_should_be(Integer statusCode) {
+	    
+		Assertions.verifyStatusCode(response, statusCode);
+	}
+
+	
+	
+	@Then("user verify response status line should be {string}")
+	public void user_verify_response_status_line_should_be(String statusLine) {
+	    
+		Assertions.verifyResponseStatusLine(response, statusLine);
+	}
+
+	
+	
+	@Then("user verify response time should be below {int} milliseconds")
+	public void user_verify_response_time_should_be_below_milliseconds(Integer time) {
+		
+		Assertions.verifyResponseTimeShouldBelow(response, (long) time);
+	}
+
+	
+	@Then("user verify response firstname value should not be not null")
+	public void user_verify_response_firstname_value_should_not_be_not_null() {
+	    
+		Assertions.verifyNotNull(response, "firstName");
+	}
+	
+
+	@Then("user verify response username value should not be not null")
+	public void user_verify_response_username_value_should_not_be_not_null() {
+		Assertions.verifyNotNull(response, "username");
+	}
+
+	
+	@Then("user verify response email value should be String type")
+	public void user_verify_response_email_value_should_be_string_type() {
+	   Assertions.verifyInstanceOfValue(response, "email", String.class);
+	}
+
+	@Then("user verify response lastname value should be String type")
+	public void user_verify_response_lastname_value_should_be_string_type() {
+		Assertions.verifyInstanceOfValue(response, "lastName", String.class);
+	}
+	
+	@When("user send get request with city name")
+	public void user_send_get_request_with_city_name() {
+	   response = employeeService.getALlEmployeesAsPerCity("Bengaluru");
+	}
+	
+	
+	@Then("user verify all employee city name")
+	public void user_verify_all_employee_city_name() {
+	    
+		Assertions.verifyResponseExpectedExactVaalue(response, "city", "bengaluru");
+	}
+
+
+	
+}
+
+
+---------------------------------
+
+
+Assertions
+
+package validators;
+
+import java.util.List;
+
+import org.hamcrest.Matchers;
+import org.testng.Assert;
+
+import io.restassured.response.Response;
+
+public class Assertions {
+	
+	
+	public static void verifyStatusCode(Response response, int expectedStatusCode)
+	{
+		//response.then().assertThat().statusCode(Matchers.equalTo(expectedStatusCode));
+		
+		
+		Assert.assertEquals(response.getStatusCode(), expectedStatusCode);
+	}
+	
+	
+	public static void verifyResponseStatusLine(Response response, String expectedStatusLine)
+	{
+		Assert.assertTrue(response.statusLine().contains(expectedStatusLine));
+	}
+	
+	
+	public static void verifyResponseTimeShouldBelow(Response response, long expectedTime)
+	{
+		Assert.assertTrue(response.getTime() < expectedTime);
+		
+		response.then().assertThat().time(Matchers.lessThan(expectedTime));
+	}
+	
+	
+	public static void verifyNotNull(Response response, String jsonPath)
+	{
+		String actualValue = response.jsonPath().getString(jsonPath);
+		
+		Assert.assertNotNull(actualValue);
+		
+		
+		//response.then().assertThat().body(jsonPath, Matchers.notNullValue());
+	}
+	
+	
+	
+	public static void verifyInstanceOfValue(Response response, String jsonPath, Class<?> classType)
+	{
+		String actualValue = response.jsonPath().getString(jsonPath);
+		Assert.assertEquals(actualValue.getClass(), classType);
+		
+		response.then().assertThat().body(jsonPath, Matchers.instanceOf(classType));
+	}
+	
+	
+	public static void verifyResponseExpectedExactVaalue(Response response, String jsonPath, String expectedValue)
+	{
+		
+		List<String> allCities = response.jsonPath().getList(jsonPath);
+		
+		
+		
+		//List<String> allCities = response.jsonPath().get("findAll(it -> it.city =='Bengaluru').city"); 
+		
+		
+		for(String actualCity : allCities)
+		{
+			Assert.assertEquals(actualCity.toLowerCase(), expectedValue.toLowerCase());
+		}	
+	}
+	
+}
+	
+		
+		
+		
+		
+		
+		
+		
+		
